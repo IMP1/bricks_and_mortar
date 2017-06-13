@@ -1,18 +1,21 @@
 local bricks = require 'bricks'
 
 return bricks.layout({
-    bricks.text({text = "Bricks Examples: Basic Elements"}),
+    bricks.text("Bricks Examples: Basic Elements"),
     bricks.group({"10", "10", "40", "80"}, {
-        bricks.text({text = "Checkboxes"}),
+        bricks.text("Checkboxes"),
         bricks.checkbox({0, 32, 32, 32}, {
             onchange = function(self, selected)
                 self:layout():elementWithId("checkbox-result"):setText("selected: " .. tostring(selected))
             end,
+            onload = function(self)
+                self:onchange(self.selected)
+            end
         }),
         bricks.text("checkbox-result", {32, 32, "100", "100"}, {text = "selected: false"})
     }),
     bricks.group({"50", "10", "40", "80"}, {
-        bricks.text({text = "Buttons & Spinners"}),
+        bricks.text("Buttons & Spinners"),
         bricks.spinner("spinner", {0, 32, 32, 32}, {
             visible = false,
         }),
@@ -22,13 +25,13 @@ return bricks.layout({
                 spinner.visible = not spinner.visible
             end,
         }, {
-            bricks.text({text = "Toggle Spinner"}),
+            bricks.text("Toggle Spinner"),
         }),
     }),
     bricks.group({"10", "30", "40", "80"}, {
-        bricks.text({text = "Text Inputs"}),
+        bricks.text("Text Inputs"),
         bricks.text_input("textinput-input", {0, 32, "50", 32}, {
-            placeholder = bricks.text({text = "Placeholder text"}),
+            placeholder = bricks.text("Placeholder text"),
             onchange = function(self)
                 local text = self:value()
                 self:layout():elementWithId("textinput-result"):setText(string.format("input: %q", text))
@@ -37,7 +40,7 @@ return bricks.layout({
         bricks.text("textinput-result", {0, 72, "100", 32}, {text = "input: \"\""}),
     }),
     bricks.group({"50", "30", "40", "80"}, {
-        bricks.text({text = "Radio Buttons"}),
+        bricks.text("Radio Buttons"),
         bricks.radio_group("test-group", {
             onchange = function(self, selected)
                 local text = self:value()
@@ -56,9 +59,12 @@ return bricks.layout({
         bricks.text("radio-result", {0, 96, "100", 32}, {text = "selected: \"\""}),
     }),
     bricks.group({"10", "60", "40", "80"}, {
-        bricks.text({text = "Dropdowns & Flashes"}),
+        bricks.text("Dropdowns & Flashes"),
         bricks.dropdown_group({0, 32, "50", 32}, {
-            placeholder = bricks.text({text = "Dropdown"}),
+            placeholder = bricks.text("Dropdown"),
+            onchange = function(self, selected)
+                print(selected.value)
+            end
         }, {
             bricks.dropdown_option({
                 value = "1"

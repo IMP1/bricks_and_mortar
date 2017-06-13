@@ -1,6 +1,5 @@
 local bricks = require 'bricks'
 
-local layout          = bricks.layout
 local group           = bricks.group
 local text            = bricks.text
 local checkbox        = bricks.checkbox
@@ -12,16 +11,22 @@ local radio_option    = bricks.radio_option
 local dropdown_group  = bricks.dropdown_group
 local dropdown_option = bricks.dropdown_option
 
-return layout({
-    text("Bricks Examples: Element Styling"),
+local layout = bricks.layout({
+    text({
+        text = "Bricks Examples: Element Styling",
+        tags = { "title" },
+    }),
     group({"10", "20", "40", "80"}, {
-        text({text = "Checkboxes"}),
+        text("Checkboxes"),
         checkbox({0, 32, 32, 32}, {
             onchange = function(self, selected)
                 self:layout():elementWithId("checkbox-result"):setText("selected: " .. tostring(selected))
             end,
+            onload = function(self)
+                self:onchange(self.selected)
+            end
         }),
-        text("checkbox-result", {32, 32, "100", "100"}, {text = "selected: false"})
+        text("checkbox-result", {32, 32, "100", "100"})
     }),
     group({"50", "20", "40", "80"}, {
         text("Buttons and Spinners"),
@@ -67,3 +72,17 @@ return layout({
         text("radio-result", {0, 96, "100", 32}, {text = "selected: \"\""}),
     }),
 })
+
+layout:addStyle({
+    ["text.title"] = {
+        textColor = {0, 128, 128},
+    },
+    ["button"] = {
+        backgroundColor = {0, 32, 32},
+    },
+    [".error"] = {
+        textColor = {192, 64, 64},
+    },
+})
+
+return layout

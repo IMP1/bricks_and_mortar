@@ -27,54 +27,6 @@ local bricks = {
     ]]
 }
 
---[[
-    Elements:
-
-
-    Common Attributes:
-        id    : string (can be nil)
-        pos   : { 
-            x,              : 0-100 (% of parent's width)
-            y,              : 0-100 (% of parent's height)
-            width,          : 0-100 (% of parent's width)
-            height,         : 0-100 (% of parent's height)
-            verticalAlign,  : "top", "bottom" or "middle"
-            horizontalAlign : "left", "right", or "center"
-        }
-        tags  : list of strings
-        style : list of style rules
-
-    Style Rule:
-        selector = {
-            styleAttribute = value,
-            styleAttribute = value,
-            ...
-        }
-
-    Selector:
-        <text> : matches text elements
-        .green : matches elements with the tag 'green'
-        #title : matches element with id 'title'
-        *      : matches all elements
-
-        <text>.green              : matches text elements with the tag 'green'
-        #parent *                 : matches all elements that are children of 
-                                    an element with the tag #parent
-        #my-form <button>.visible : matches button elements with the tag 
-                                    'visible' that are children of elements 
-                                    with the id 'my-form'.
-
-    Style Attributes:
-        color           : {r, g, b, a}
-        font            : 
-        backgroundColor : {r, g, b, a}
-        borderWidth     : int
-        borderColor     : {r, g, b, a}
-        padding         : {left, top, right, bottom }
-        customDraw      : function(element)
-
-]]
-
 local default_style = {
     common = {
         backgroundColor = nil,
@@ -165,19 +117,38 @@ function Element.new(elementName, id, pos, options)
     obj.tags    = options.tags or {}
     obj.hover   = false
     obj.focus   = false
-    obj.visible = options.visible
     obj.style   = options.style or {}
-    if default_style[elementName] then
-        for k, v in pairs(default_style[elementName]) do
-            if obj.style[k] == nil then
-                obj.style[k] = v
+    obj.onload  = options.onload or nil
+    obj.visible = options.visible
+    if obj.visible == nil then obj.visible = true end
+    
+    return obj
+end
+
+function Element:load()
+    if self.onload then
+        self:onload()
+    end
+    -- setup styles
+    if default_style[self._name] then
+        for k, v in pairs(default_style[self._name]) do
+            if self.style[k] == nil then
+                self.style[k] = v
             end
         end
     end
-    setmetatable(obj.style, {__index = default_style.common})
-    if obj.visible == nil then obj.visible = true end
+    setmetatable(self.style, {__index = default_style.common})
+    -- load style from style declarations
 
-    return obj
+    -- load children
+    if self.elements then
+        for _, e in pairs(self.elements) do
+            e:load()
+        end
+    end
+    if self.placeholder then
+        self.placeholder:load()
+    end
 end
 
 function Element:setStyle(styleRules)
@@ -372,7 +343,9 @@ function Element:find(selectors)
         for _, child in pairs(self.elements) do
             local results = child:find(selectors)
             if #results > 0 then
-                matches = array.append(matches, unpack(results))
+                for _, r in ipairs(results) do
+                    table.insert(matches, r)
+                end
             end
         end
         return matches
@@ -384,7 +357,9 @@ function Element:find(selectors)
         for _, child in pairs(self.elements) do
             local results = child:find(nextSelectors)
             if #results > 0 then
-                matches = array.append(matches, unpack(results))
+                for _, r in ipairs(results) do
+                    table.insert(matches, r)
+                end
             end
         end
         return matches
@@ -413,8 +388,16 @@ function Element:matches(selector)
     -- print("Matching " .. tostring(self) .. " to #" .. tostring(id) .. " id.")
     -- tags
     for tag in selector:gmatch("%.(%w+)") do
-        if tag and array.none(self.tags, function(t) return t == tag end) then
-            return false
+        if tag then
+            local none = true
+            for _, t in pairs(self.tags) do
+                if t == tag then
+                    none = false
+                end
+            end
+            if none then
+                return false
+            end
         end
     end
     -- print("Matched!")
@@ -453,6 +436,9 @@ function Element:draw()
 end
 
 function Element:applyMargin(x, y, w, h)
+    if not self.style.margin then
+        return x, y, w, h
+    end
     x = x + self.style.margin[1]
     y = y + self.style.margin[2]
     w = w - self.style.margin[1] - self.style.margin[3]
@@ -461,6 +447,9 @@ function Element:applyMargin(x, y, w, h)
 end
 
 function Element:applyPadding(x, y, w, h)
+    if not self.style.padding then
+        return x, y, w, h
+    end
     x = x + self.style.padding[1]
     y = y + self.style.padding[2]
     w = w - (self.style.padding[1] + self.style.padding[3])
@@ -469,7 +458,10 @@ function Element:applyPadding(x, y, w, h)
 end
 
 function Element:drawShape(x, y, w, h)
-    local rx, ry = unpack(self.style.borderRadius)
+    local rx, ry = 0, 0
+    if self.style.borderRadius then
+        rx, ry = unpack(self.style.borderRadius)
+    end
 
     -- draw shape
     local drawBackground = true
@@ -667,10 +659,17 @@ end
 
 function Group:removeElements(selector)
     local elements = self:find(selector)
-    self.elements = array.filter(self.elements, 
-        function(e) 
-            return array.none(elements, e) 
-        end)
+    for i = #self.elements, 1, -1 do
+        local remove = false
+        for _, e in pairs(elements) do
+            if e == self.elements[i] then
+                remove = true
+            end
+        end
+        if remove then
+            table.remove(self.elements, i)
+        end
+    end
 end
 
 function Group:drawContent(w, h)
@@ -916,7 +915,7 @@ function DropdownGroup:choose(option)
         local oldOption = self.selectedOptions[1]
         self.selectedOptions[1] = option
         if self.onchange then
-            stop = self:onchange()
+            stop = self:onchange(option)
         end
         if stop then
             self.selectedOptions[1] = oldOption
@@ -1067,11 +1066,9 @@ function Layout.new(id, position, options)
         e.parent = this
     end
     this.cannotTarget = true
+    this.styleRules   = {}
+    this:load()
     return this
-end
-
-function Layout:mousereleased(mx, my, key)
-    Group.mousereleased(self, mx, my, key)
 end
 
 function Layout:keypressed(key, isRepeat)
@@ -1094,6 +1091,14 @@ function Layout:draw()
     bricks.graphics.setLineStyle("rough")
     Group.draw(self)
     bricks.graphics.pop()
+end
+
+function Layout:addStyle(styleRules)
+    -- TODO: use style rules for created elements (in :load())
+    for k, v in pairs(styleRules) do
+        self.styleRules[k] = v
+    end
+    bricks.style(self, styleRules)
 end
 
 --------------------------------------------------------------------------------
