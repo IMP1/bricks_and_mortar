@@ -1692,13 +1692,48 @@ local function default_group_constructor_for(ObjectClass)
     end
 end
 
+local function special_text_constructor()
+    local ObjectClass = Text
+    return function(...)
+        local params = {...}
+        if #params == 3 then
+            return ObjectClass.new(unpack(params))
+        elseif #params == 2 then
+            if type(params[1]) == "string" then
+                return ObjectClass.new(params[1], nil, params[2])
+            elseif type(params[1]) == "table" then
+                return ObjectClass.new(nil, params[1], params[2])
+            end
+        elseif #params == 1 then
+            if params[1][1] then
+                return ObjectClass.new(nil, params[1], {})
+            elseif type(params[1]) == "string" then
+                return ObjectClass.new(nil, nil, {text = params[1]})
+            else
+                return ObjectClass.new(nil, nil, params[1])
+            end
+        elseif #params == 0 then
+            return ObjectClass.new(nil, nil, {})
+        else
+            local errorString = "[Mortar] Invalid parameters:\n"
+            errorString = errorString .. "Attempted to create a " .. tostring(ObjectClass)
+            errorString = errorString .. " with " .. tostring(#params) .. " parameters\n"
+            for k, v in pairs(params) do
+                errorString = errorString .. "\t" .. tostring(v) .. ",\n"
+            end
+            error(errorString)
+        end
+    end
+end
+
 -- Public methods for creation of elements.
 bricks.checkbox     = default_constructor_for(Checkbox)
 bricks.hidden       = default_constructor_for(Hidden)
 bricks.radio_option = default_constructor_for(RadioOption)
 bricks.spinner      = default_constructor_for(Spinner)
-bricks.text         = default_constructor_for(Text)
 bricks.text_input   = default_constructor_for(TextInput)
+
+bricks.text         = special_text_constructor()
 
 bricks.button          = default_group_constructor_for(Button)
 bricks.radio_group     = default_group_constructor_for(RadioGroup)

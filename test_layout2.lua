@@ -1,57 +1,69 @@
 local bricks = require 'bricks'
 
-return bricks.layout({
-    bricks.text({text = "Bricks Examples: Element Styling"}),
-    bricks.group({"10", "20", "40", "80"}, {
-        bricks.text({text = "Checkboxes"}),
-        bricks.checkbox({0, 32, 32, 32}, {
+local layout          = bricks.layout
+local group           = bricks.group
+local text            = bricks.text
+local checkbox        = bricks.checkbox
+local spinner         = bricks.spinner
+local button          = bricks.button
+local text_input      = bricks.text_input
+local radio_group     = bricks.radio_group
+local radio_option    = bricks.radio_option
+local dropdown_group  = bricks.dropdown_group
+local dropdown_option = bricks.dropdown_option
+
+return layout({
+    text("Bricks Examples: Element Styling"),
+    group({"10", "20", "40", "80"}, {
+        text({text = "Checkboxes"}),
+        checkbox({0, 32, 32, 32}, {
             onchange = function(self, selected)
                 self:layout():elementWithId("checkbox-result"):setText("selected: " .. tostring(selected))
             end,
         }),
-        bricks.text("checkbox-result", {32, 32, "100", "100"}, {text = "selected: false"})
+        text("checkbox-result", {32, 32, "100", "100"}, {text = "selected: false"})
     }),
-    bricks.group({"50", "20", "40", "80"}, {
-        bricks.text({text = "Buttons and Spinners"}),
-        bricks.spinner("spinner", {0, 32, 32, 32}, {
+    group({"50", "20", "40", "80"}, {
+        text("Buttons and Spinners"),
+        spinner("spinner", {0, 32, 32, 32}, {
             visible = false,
         }),
-        bricks.button({64, 32, "40", 32}, {
+        button({64, 32, "40", 32}, {
             onclick = function(self)
                 local spinner = self:layout():elementWithId("spinner")
                 spinner.visible = not spinner.visible
             end,
         }, {
-            bricks.text({text = "Toggle Spinner"}),
+            text({text = "Toggle Spinner"}),
         }),
     }),
-    bricks.group({"10", "40", "40", "80"}, {
-        bricks.text({text = "Text Inputs"}),
-        bricks.text_input("textinput-input", {0, 32, "50", 32}, {
+    group({"10", "40", "40", "80"}, {
+        text("Text Inputs"),
+        text_input("textinput-input", {0, 32, "50", 32}, {
             onchange = function(self)
                 local text = self:value()
                 self:layout():elementWithId("textinput-result"):setText(string.format("input: %q", text))
             end,
         }),
-        bricks.text("textinput-result", {0, 72, "100", 32}, {text = "input: \"\""}),
+        text("textinput-result", {0, 72, "100", 32}, {text = "input: \"\""}),
     }),
-    bricks.group({"50", "40", "40", "80"}, {
-        bricks.text({text = "Radio Buttons"}),
-        bricks.radio_group("test-group", {
+    group({"50", "40", "40", "80"}, {
+        text("Radio Buttons"),
+        radio_group("test-group", {
             onchange = function(self, selected)
                 local text = self:value()
                 self:layout():elementWithId("radio-result"):setText(string.format("selected: %q", text or ""))
             end,
         }, {
-            bricks.radio_option({0, 32, 32, 32}, {
+            radio_option({0, 32, 32, 32}, {
                 group = "test-group",
                 value = "1",
             }),
-            bricks.radio_option({0, 64, 32, 32}, {
+            radio_option({0, 64, 32, 32}, {
                 group = "test-group",
                 value = "2",
             }),
         }),
-        bricks.text("radio-result", {0, 96, "100", 32}, {text = "selected: \"\""}),
+        text("radio-result", {0, 96, "100", 32}, {text = "selected: \"\""}),
     }),
 })
