@@ -27,8 +27,8 @@ local bricks = {
     ]]
 }
 
-local default_style = {
-    common = {
+local default_global_styles = {
+    ["*"] = {
         backgroundColor = nil,
         borderColor     = nil,
         textColor       = {224, 224, 224},
@@ -36,15 +36,18 @@ local default_style = {
         margin          = {0, 0, 0, 0},
         padding         = {4, 4, 4, 4},
     },
-    group = {
+}
+
+local default_element_styles = {
+    ["group"] = {
         margin          = {0, 0, 0, 0},
         padding         = {0, 0, 0, 0},
     },
-    layout = {
+    ["layout"] = {
         margin          = {0, 0, 0, 0},
         padding         = {0, 0, 0, 0},
     },
-    button = {
+    ["button"] = {
         backgroundColorFocus  = {32, 32, 32},
         backgroundColorActive = {64, 64, 64},
         backgroundColor       = {32, 32, 32},
@@ -54,36 +57,36 @@ local default_style = {
         borderColorActive     = {192, 192, 192},
         padding               = {8, 8, 4, 4}
     },
-    checkbox = {
+    ["checkbox"] = {
         borderColor           = {192, 192, 192},
         borderColorFocus      = {128, 128, 255},
         backgroundColor       = {32, 32, 32},
         backgroundColorFocus  = {32, 32, 32},
     },
-    dropdown_group = {
+    ["dropdown_group"] = {
         borderColor           = {192, 192, 192},
         borderColorFocus      = {128, 128, 255},
         backgroundColor       = {32, 32, 32},
         backgroundColorFocus  = {32, 32, 32},
         padding               = {0, 0, 0, 0},
         placeholder = {
-            padding               = {4, 4, 4, 4},
+            padding           = {4, 4, 4, 4},
         }
     },
-    dropdown_option = {
+    ["dropdown_option"] = {
         borderColor           = {192, 192, 192},
         borderColorFocus      = {128, 128, 255},
         backgroundColor       = {32, 32, 32},
         backgroundColorFocus  = {32, 32, 32},
     },
-    radio_option = {
+    ["radio_option"] = {
         borderColor           = {192, 192, 192},
         borderColorFocus      = {128, 128, 255},
         backgroundColor       = {32, 32, 32},
         backgroundColorFocus  = {32, 32, 32},
         borderRadius          = {8, 8},
     },
-    text_input = {
+    ["text_input"] = {
         borderColor        = {192, 192, 192},
         borderColorFocus   = {128, 128, 255},
         borderColorInvalid = {192, 128, 128},
@@ -91,7 +94,6 @@ local default_style = {
         textColor          = {255, 255, 255},
         textColorInvalid   = {255, 255, 255},
         cursorColor        = {255, 255, 255},
-
     },
 }
 
@@ -118,6 +120,7 @@ function Element.new(elementName, id, pos, options)
     obj.hover   = false
     obj.focus   = false
     obj.style   = options.style or {}
+    obj.loaded  = false
     obj.onload  = options.onload or nil
     obj.visible = options.visible
     if obj.visible == nil then obj.visible = true end
@@ -130,15 +133,16 @@ function Element:load()
         self:onload()
     end
     -- setup styles
-    if default_style[self._name] then
-        for k, v in pairs(default_style[self._name]) do
-            if self.style[k] == nil then
-                self.style[k] = v
-            end
-        end
-    end
-    setmetatable(self.style, {__index = default_style.common})
+    -- if default_style[self._name] then
+    --     for k, v in pairs(default_style[self._name]) do
+    --         if self.style[k] == nil then
+    --             self.style[k] = v
+    --         end
+    --     end
+    -- end
+    -- setmetatable(self.style, {__index = default_style.common})
     -- load style from style declarations
+    self:layout():refreshStyles()
 
     -- load children
     if self.elements then
@@ -149,6 +153,7 @@ function Element:load()
     if self.placeholder then
         self.placeholder:load()
     end
+    self.loaded = true
 end
 
 function Element:setStyle(styleRules)
@@ -316,6 +321,19 @@ function Element:find(selectors)
     local nextSelectors = selectors:sub(j)
     local final = #nextSelectors == 0
 
+    local matches = {}
+
+    if selectors == "*" then
+        -- TODO: have this also include selectors like "*#lol"
+        -- TODO: does this need to double the results and return
+        --       all children, with the * passed, and then again
+        --       with the rest of the selector passed?
+        --       for a selector like "* > .title"
+        final = false
+        nextSelectors = "*"
+        table.insert(matches, self)
+    end
+
     if s == ">" and final then
         return {}
     elseif s == ">" then
@@ -339,7 +357,6 @@ function Element:find(selectors)
 
     if not match and self.elements and not directDescendant then
         -- print("checking children...")
-        local matches = {}
         for _, child in pairs(self.elements) do
             local results = child:find(selectors)
             if #results > 0 then
@@ -353,7 +370,6 @@ function Element:find(selectors)
 
     if match and self.elements and not final then
         -- print("continuing on...")
-        local matches = {}
         for _, child in pairs(self.elements) do
             local results = child:find(nextSelectors)
             if #results > 0 then
@@ -365,7 +381,7 @@ function Element:find(selectors)
         return matches
     end
 
-    return {}
+    return matches
 end
 
 function Element:matches(selector)
@@ -374,7 +390,7 @@ function Element:matches(selector)
         return false
     end
     -- element
-    local element = selector:match("^(%w+)")
+    local element = selector:match("^([%w_]+)")
     element = element or selector:match("%*")
     if element and element ~= "*" and element ~= self._name then
         return false
@@ -399,6 +415,11 @@ function Element:matches(selector)
                 return false
             end
         end
+    end
+    -- attributes
+    local attribute, value = selector:match("%[(%w+)=(.-)%]")
+    if attribute and tostring(self[attribute]) ~= value then
+        return false
     end
     -- print("Matched!")
     return true
@@ -645,6 +666,7 @@ end
 
 function Group:addElement(element)
     table.insert(self.elements, element)
+    self:layout():refreshStyles()
 end
 
 function Group:removeElement(element)
@@ -655,6 +677,7 @@ function Group:removeElement(element)
             return
         end
     end
+    self:layout():refreshStyles()
 end
 
 function Group:removeElements(selector)
@@ -1067,6 +1090,8 @@ function Layout.new(id, position, options)
     end
     this.cannotTarget = true
     this.styleRules   = {}
+    this:addStyle(default_global_styles)
+    this:addStyle(default_element_styles)
     this:load()
     return this
 end
@@ -1083,7 +1108,13 @@ function Layout:keypressed(key, isRepeat)
     end
 end
 
+function Layout:update(...)
+    Group.update(self, ...)
+    self:refreshStyles(true)
+end
+
 function Layout:draw()
+    self:refreshStyles() -- TODO: check that this doesn't kill performance.
     if not self.visible then
         return
     end
@@ -1098,7 +1129,20 @@ function Layout:addStyle(styleRules)
     for k, v in pairs(styleRules) do
         self.styleRules[k] = v
     end
-    bricks.style(self, styleRules)
+end
+
+function Layout:load()
+    Element.load(self)
+    self:refreshStyles()
+    bricks.style(self, self.styleRules)
+end
+
+function Layout:refreshStyles(hardRefresh)
+    if not self.loaded then return end
+    if hardRefresh then
+        -- TODO: remove existing styles from all elements and reapply them.
+    end
+    bricks.style(self, self.styleRules)
 end
 
 --------------------------------------------------------------------------------
@@ -1546,8 +1590,9 @@ function TextInput:drawContent(w, h)
         bricks.graphics.setColor(unpack(self.style.textColor))
     end
 
-    local x = default_style.common.padding[1]
-    local y = default_style.common.padding[2]
+
+    local x = default_global_styles["*"].padding[1]
+    local y = default_global_styles["*"].padding[2]
 
     love.graphics.printf(text, x, y, w, self.pos[6])
 
